@@ -4,7 +4,7 @@
 <title>Stazione Aurora</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
 /* Layout: scena 3D a tutto schermo, HUD fisso in alto, pannello contestuale in basso (a destra su schermi larghi) */
 :root{
@@ -252,6 +252,91 @@ body.in-ar{background:transparent}
 body.in-xr #scene{opacity:0}
 body.in-ar #hud{background:linear-gradient(180deg,rgba(0,0,0,.55),transparent)}
 body.in-ar #overlay.brief{background:linear-gradient(180deg,rgba(11,16,32,.9) 0%,rgba(11,16,32,0) 55%)}
+/* ===== v4 · estetica "segnale": interfaccia olografica sopra la realtà ===== */
+:root{
+  --space:#04070A; --surface:rgba(8,13,17,.9); --surface-2:#0C1318; --line:rgba(150,235,250,.16);
+  --ink:#ECF7F9; --ink-2:#7F98A2; --aurora:#6FF3FF; --star:#F4F7F8;
+  --warn:#FFC23D; --crit:#FF2E58; --entropia:#FF3EC8; --ok:#6FF3FF;
+  --f-display:"Chakra Petch",system-ui,sans-serif; --f-body:"Chakra Petch",system-ui,sans-serif; --f-data:"JetBrains Mono",ui-monospace,monospace;
+  --cut:10px;
+}
+body{background:radial-gradient(120% 80% at 50% 40%,#0A141A 0%,#04070A 70%);font-size:15.5px;letter-spacing:.01em}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;background:repeating-linear-gradient(180deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px),radial-gradient(130% 100% at 50% 50%,transparent 60%,rgba(0,0,0,.55) 100%)}
+body.in-ar::after{background:repeating-linear-gradient(180deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px)}
+
+/* forme: angoli tagliati, niente arrotondamenti morbidi */
+.btn,.card,.entropia-card,#capture,#nova .bubble,#objective,#waveHud,.mode,.opt,.seg button,#toast,#arHint,.rule-pill,.chip,#sheet{border-radius:0!important}
+.btn{clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut));text-transform:uppercase;letter-spacing:.12em;font-weight:600;font-family:var(--f-display)}
+.btn.primary{background:var(--aurora);color:#021014;border-color:var(--aurora);box-shadow:0 0 24px rgba(111,243,255,.35)}
+.btn.ghost{background:rgba(0,0,0,.35);border:1px solid var(--line)}
+.btn.big{font-size:17px;padding:17px 20px}
+.card,.entropia-card,#capture,#waveHud{clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));background:var(--surface)}
+.entropia-card{border-color:var(--entropia);background:linear-gradient(135deg,rgba(255,62,200,.14),rgba(8,13,17,.92))}
+
+/* parentesi agli angoli: il marchio visivo dell'interfaccia */
+.brk{position:relative}
+#capture,#nova .bubble,.screen.mandate,#arHint{--b:var(--aurora);background-image:
+  linear-gradient(var(--b),var(--b)),linear-gradient(var(--b),var(--b)),linear-gradient(var(--b),var(--b)),linear-gradient(var(--b),var(--b));
+  background-size:14px 2px,2px 14px,14px 2px,2px 14px;background-position:0 0,0 0,100% 100%,100% 100%;background-repeat:no-repeat}
+#capture{--b:var(--star);background-color:rgba(6,10,13,.95);border:1px solid rgba(244,247,248,.25);box-shadow:0 0 50px rgba(111,243,255,.15)}
+#nova .bubble{background-color:rgba(4,8,10,.88);border:1px solid rgba(111,243,255,.28);font-size:15.5px}
+#nova .bubble.entropia{--b:var(--entropia);border-color:rgba(255,62,200,.5)}
+#nova .bubble b{font-family:var(--f-data);font-size:10.5px;letter-spacing:.2em}
+#nova .bubble b::before{content:"▍";margin-right:4px}
+#nova .orb{border-radius:0;transform:rotate(45deg);width:22px;height:22px;margin:0 6px 8px;background:var(--aurora);box-shadow:0 0 18px var(--aurora),0 0 0 4px rgba(111,243,255,.18)}
+
+/* HUD */
+#hud{background:linear-gradient(180deg,rgba(4,7,10,.92),rgba(4,7,10,0))}
+.brand{font-family:var(--f-data)!important;font-size:12px!important;letter-spacing:.18em;text-transform:uppercase;color:var(--aurora)}
+.brand::before{content:"◢ ";color:var(--aurora)}
+#objective{background:rgba(4,7,10,.82);border:1px solid rgba(111,243,255,.4);font-family:var(--f-display);font-size:14.5px;letter-spacing:.02em;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+#objective b{font-family:var(--f-data);letter-spacing:.2em}
+#objective b::before{content:"› "}
+#objective.done{background:var(--aurora);color:#021014}
+.codex-btn{font-family:var(--f-data);text-transform:uppercase;letter-spacing:.12em;background:rgba(0,0,0,.4)}
+#holoBtn{font-size:11.5px;padding:8px 10px}
+
+/* etichette nella scena: tag di sistema */
+.lbl{background:rgba(2,5,7,.72);border:none;border-left:2px solid var(--aurora);border-radius:0;font-family:var(--f-data);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;padding:3px 7px 3px 6px;color:var(--ink)}
+#labels .lbl.sel,#labels .x-sel{border-left-color:var(--star);box-shadow:none;background:rgba(244,247,248,.14)}
+.lbl.ext{border-left-color:var(--entropia);color:var(--entropia)}
+.lbl.port{border:1px solid var(--aurora);border-radius:0;font-size:12px;letter-spacing:.04em;padding:2px 6px;background:rgba(2,5,7,.85)}
+.lbl.port.bad{border-color:var(--crit);color:var(--crit);box-shadow:0 0 14px rgba(255,46,88,.55)}
+.lbl.pkt{border-left-color:var(--star);font-size:11px}
+
+/* porte */
+.port{border-radius:0}
+.port.p22{color:var(--star);border-color:var(--star)}
+.port.p23{box-shadow:0 0 12px rgba(255,46,88,.4)}
+
+/* apertura */
+#overlay.cine{background:linear-gradient(180deg,rgba(4,7,10,.25) 0%,rgba(4,7,10,0) 35%,rgba(4,7,10,.9) 80%)}
+.title-card{font-family:var(--f-display);font-weight:700;letter-spacing:.32em;background:none;color:var(--ink);-webkit-text-fill-color:currentColor;filter:none;text-shadow:0 0 18px rgba(111,243,255,.45);position:relative}
+.title-card::after{content:"// COLLAUDO DI SICUREZZA · ACCESSO AUTORIZZATO";display:block;font-family:var(--f-data);font-size:10.5px;letter-spacing:.24em;color:var(--aurora);margin-top:14px;text-shadow:none}
+#overlay.glitch .title-card{color:#fff;text-shadow:3px 0 var(--entropia),-3px 0 var(--aurora);animation:glitch .28s steps(2) infinite;background:none}
+#overlay.glitch .title-card::after{content:"// INTRUSIONE RILEVATA · ACCESSI REVOCATI";color:var(--entropia)}
+.cine .who{font-family:var(--f-data);letter-spacing:.24em}
+.cine .who::before{content:"▍"}
+.cine .txt{font-family:var(--f-display);font-weight:600;text-transform:none;letter-spacing:.01em}
+#overlay.glitch .txt{color:#fff;text-shadow:2px 0 var(--entropia),-2px 0 var(--aurora)}
+
+/* schermate */
+.mission-n{font-family:var(--f-data);letter-spacing:.24em}
+.mission-n::before{content:"[ ";} .mission-n::after{content:" ]"}
+.screen h1,.screen h2{font-family:var(--f-display);letter-spacing:.01em;text-transform:uppercase}
+.screen.mandate{padding:18px 16px;background-color:rgba(4,7,10,.55)}
+.rule-pill{font-family:var(--f-data);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.stars .on{color:var(--aurora);text-shadow:0 0 18px rgba(111,243,255,.7)}
+.score-big{font-family:var(--f-data)!important}
+#sheet{background:rgba(4,8,10,.94);border-top:1px solid rgba(111,243,255,.3)}
+.door .seg button.on{border-color:var(--aurora);color:var(--aurora);background:rgba(111,243,255,.1)}
+.wbar i{border-radius:0;background:rgba(255,255,255,.08)}
+.wbar span{font-family:var(--f-data);text-transform:uppercase;letter-spacing:.1em;font-size:10.5px}
+#waveHud .legend{font-family:var(--f-data);text-transform:uppercase;font-size:11px}
+#holdRing{border-radius:0;-webkit-mask:none;mask:none;background:none;border:2px solid var(--aurora);animation:holdlock .65s ease-in forwards}
+@keyframes holdlock{from{transform:scale(1.8) rotate(45deg);opacity:.2}to{transform:scale(.7) rotate(0deg);opacity:1}}
+#cursor{border-radius:0!important;transform:rotate(45deg)}
+#cursor.pinch{transform:rotate(45deg) scale(.6);background:rgba(111,243,255,.4)}
 
 </style>
 
@@ -629,7 +714,7 @@ function fitDist(){ const a=innerWidth>=900?(innerWidth-400)/innerHeight:innerWi
 const world=new THREE.Group(); const stage=new THREE.Group(); scene.add(stage); stage.add(world);
 scene.add(new THREE.AmbientLight(0x8890c0,0.75));
 const dl=new THREE.DirectionalLight(0xffffff,0.8); dl.position.set(4,8,6); scene.add(dl);
-const COL={aurora:0x3DDCC8, star:0x8B7CF6, warn:0xFFB547, crit:0xFF5A6E, ent:0xE04CC0, line:0x2E3A6A, ink:0xE8ECF8};
+const COL={aurora:0x6FF3FF, star:0xF4F7F8, warn:0xFFC23D, crit:0xFF2E58, ent:0xFF3EC8, line:0x1E4A55, ink:0xECF7F9};
 const stars=(function(){
   const g=new THREE.BufferGeometry(); const n=600, a=new Float32Array(n*3);
   let seed=7; const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
@@ -656,13 +741,13 @@ function buildScene(){
   world.rotation.set(0.32,-0.55,0);
   for(const [k,d] of Object.entries(M.decks)){
     const g=new THREE.Group(); g.position.y=d.y;
-    const plate=new THREE.Mesh(new THREE.BoxGeometry(6.4,0.05,3.8), new THREE.MeshBasicMaterial({color:d.scope?0x1B2A55:0x161E3C, transparent:true, opacity:0.55, side:THREE.DoubleSide}));
+    const plate=new THREE.Mesh(new THREE.BoxGeometry(6.4,0.05,3.8), new THREE.MeshBasicMaterial({color:d.scope?0x0B2A30:0x0A1418, transparent:true, opacity:0.32, side:THREE.DoubleSide, depthWrite:false}));
     plate.position.x=0.4; g.add(plate);
     const grid=new THREE.GridHelper(3.8,8,COL.line,COL.line); grid.scale.x=6.4/3.8; grid.position.set(0.4,0.03,0);
     grid.material.transparent=true; grid.material.opacity=0.5; g.add(grid);
-    const edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(6.4,0.05,3.8)), new THREE.LineBasicMaterial({color:d.out?COL.warn:(d.scope?COL.aurora:0x4A5A9A)}));
+    const edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(6.4,0.05,3.8)), new THREE.LineBasicMaterial({color:d.out?COL.warn:(d.scope?COL.aurora:0x9FB4BC)}));
     edge.position.x=0.4; g.add(edge);
-    const sw=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.18,0.5), new THREE.MeshStandardMaterial({color:0x2A3570, emissive:0x111a40}));
+    const sw=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.18,0.5), new THREE.MeshStandardMaterial({color:0x0E1A1E, emissive:0x0A2A30}));
     sw.position.set(SWX,0.12,0); g.add(sw);
     world.add(g); deckMeshes[k]={plate,grid,edge};
   }
@@ -670,16 +755,17 @@ function buildScene(){
     let m;
     if(d.kind==="host"){
       const out=M.decks[d.deck].out;
-      m=new THREE.Mesh(geo[d.shape], new THREE.MeshStandardMaterial({color: out?0x6B5A3A:(M.decks[d.deck].scope?0x2E8F86:0x5A54A8), emissive: out?0x2a1a00:0x0a1630, roughness:0.4, metalness:0.2}));
+      m=new THREE.Mesh(geo[d.shape], new THREE.MeshStandardMaterial({color:0x081014, emissive: out?0x2a1800:(M.decks[d.deck].scope?0x06343A:0x1A2226), roughness:0.5, metalness:0.3, transparent:true, opacity:0.9}));
       m.position.copy(hostPos(id)); if(d.shape==="cyl") m.position.y+=0.12;
+      m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo[d.shape]), new THREE.LineBasicMaterial({color: out?COL.warn:(M.decks[d.deck].scope?COL.aurora:0xDCE6EA)})));
       const y=deckY(d.deck)+0.12;
-      world.add(line([[d.pos[0],y,d.pos[1]],[SWX,y,d.pos[1]],[SWX,y,0]],0x4A5A9A));
+      world.add(line([[d.pos[0],y,d.pos[1]],[SWX,y,d.pos[1]],[SWX,y,0]],0x2E7A86));
       rings[id]=ring(COL.warn,0.55,new THREE.Vector3(d.pos[0],deckY(d.deck)+0.08,d.pos[1]));
     } else if(d.kind==="router"){
       if(d.style==="column"){
         const ys=Object.values(M.decks).map(x=>x.y), h=Math.max(...ys)-Math.min(...ys)+1.2;
         const g=new THREE.CylinderGeometry(0.42,0.42,h,6);
-        m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0x2A2F5A, emissive:0x1a1040, transparent:true, opacity:0.9}));
+        m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0x081014, emissive:0x10181C, transparent:true, opacity:0.75}));
         m.position.set(d.pos[0],0,d.pos[2]);
         const e=new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({color:COL.star})); e.position.copy(m.position); world.add(e);
         for(const k of Object.keys(M.decks)) world.add(line([[SWX,deckY(k)+0.12,0], portPos(id,k)], COL.star));
@@ -1782,7 +1868,7 @@ function gameTick(now){
   if(S.phase==="intro") world.rotation.y+=dt*0.12;
   for(const m of markers){
     m.a+=dt*0.6; const c=meshes[m.node].position;
-    m.mesh.position.set(c.x+Math.cos(m.a)*0.75, c.y+0.15, c.z+Math.sin(m.a)*0.75);
+    m.mesh.position.set(c.x+Math.cos(m.a)*1.1, c.y+0.25, c.z+Math.sin(m.a)*1.1);
     const off = M.id==="m2" && m.node==="server" && !S.services[m.pt];
     m.mesh.material.opacity=off?0.2:1; m.label.classList.toggle("off",off);
   }
