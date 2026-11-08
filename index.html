@@ -1918,10 +1918,13 @@ function screenOpening(){
     o.innerHTML=`<div class="title-card">STAZIONE<br>AURORA</div><div class="say nova start">
       ${mobile?`<button class="btn primary big" id="arBtn" type="button">Gioca nella tua stanza</button>`:""}
       <button class="btn ${mobile?"":"primary "}big" id="playBtn" type="button">${mobile?"Gioca sullo schermo":"Inizia"}</button>
+      ${mobile?`<button class="btn ghost" id="xrBtn" type="button" hidden>Appoggia sul tavolo (senza mano)</button>`:""}
       <button class="btn ghost" id="expertBtn" type="button">Sono esperto di reti</button></div>`;
     const go=mode=>{ S.mode=mode; S.name=S.name||"Collaudatore"; o.classList.remove("cine"); if(registro.m2) screenIntro(); else { M=MISSIONS.m2; startMission(); } };
     $("playBtn").onclick=()=>go("cadetto"); $("expertBtn").onclick=()=>go("specialista");
-    if($("arBtn")) $("arBtn").onclick=()=>{ o.hidden=true; o.classList.remove("cine"); AR.start(()=>go("cadetto")); };
+    if($("arBtn")) $("arBtn").onclick=()=>{ o.hidden=true; o.classList.remove("cine"); AR.start(()=>go("cadetto"),"gyro"); };
+    if($("xrBtn")){ AR.xrSupported().then(ok=>{ if(ok && $("xrBtn")) $("xrBtn").hidden=false; });
+      $("xrBtn").onclick=()=>{ o.hidden=true; o.classList.remove("cine"); AR.start(()=>go("cadetto"),"xr"); }; }
   }
 }
 
@@ -2097,9 +2100,9 @@ const AR = (function(){
     document.body.classList.remove("in-ar","in-xr"); showHint(""); label();
     const f=st.onPlaced; st.onPlaced=null; if(f) f();
   }
-  async function start(then){
+  async function start(then, prefer){
     st.onPlaced=then||null;
-    if(await xrSupported()){
+    if(prefer==="xr" && await xrSupported()){
       try{ await startXR(); return; }catch(e){ console.warn("WebXR non avviato", e); }
     }
     await startGyro();
@@ -2109,7 +2112,7 @@ const AR = (function(){
 
   return {
     get on(){ return st.on; }, get mode(){ return st.mode; },
-    xrSupported, start, stop, toggle(){ st.on?stop():start(); },
+    xrSupported, start, stop, toggle(){ st.on?stop():start(null,"gyro"); },
     tick(xrFrame){
       if(st.mode==="gyro"){ gyroTick(); return; }
       if(st.mode==="xr" && xrFrame && st.hitSource && !st.placed){
