@@ -247,6 +247,12 @@ body.cadetto .lbl.deck{display:none!important}
 body.cadetto .brand span{display:none}
 #overlay.brief{background:linear-gradient(180deg,rgba(11,16,32,.92) 0%,rgba(11,16,32,.55) 45%,rgba(11,16,32,0) 70%);backdrop-filter:none;-webkit-backdrop-filter:none}
 
+#arHint{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);width:min(320px,calc(100% - 48px));text-align:center;background:rgba(11,16,32,.8);border:1px solid var(--aurora);border-radius:14px;padding:14px;font-size:16px;line-height:1.35;z-index:4;pointer-events:none}
+body.in-ar{background:transparent}
+body.in-xr #scene{opacity:0}
+body.in-ar #hud{background:linear-gradient(180deg,rgba(0,0,0,.55),transparent)}
+body.in-ar #overlay.brief{background:linear-gradient(180deg,rgba(11,16,32,.9) 0%,rgba(11,16,32,0) 55%)}
+
 </style>
 
 <div id="app">
@@ -260,7 +266,7 @@ body.cadetto .brand span{display:none}
       <div style="display:flex;gap:6px;align-items:center">
         <span class="chip mode" id="modeChip">Cadetto</span>
         <button class="chip codex-btn" id="codexBtn" type="button">Codex</button>
-        <button class="btn ghost" id="holoBtn" type="button">Ologramma</button>
+        <button class="btn ghost" id="holoBtn" type="button">Nella stanza</button>
       </div>
     </div>
     <div id="phases"></div>
@@ -281,6 +287,7 @@ body.cadetto .brand span{display:none}
     <div class="actions" id="actions"></div>
   </section>
   <div id="toast" hidden></div>
+  <div id="arHint" hidden></div>
   <div id="waveHud" hidden></div>
   <div id="capture" hidden></div>
   <div id="holdRing" hidden></div>
@@ -614,12 +621,12 @@ function evidenceFromProbe(p, r){
    ========================================================= */
 const canvas=document.getElementById("scene");
 const renderer=new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2)); renderer.xr.enabled=true;
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(45,1,0.1,200);
 let camDist=13;
 function fitDist(){ const a=innerWidth>=900?(innerWidth-400)/innerHeight:innerWidth/innerHeight; const h=2*Math.atan(Math.tan(22.5*Math.PI/180)*a); return Math.max(12,Math.min(34,5.9/Math.tan(h/2))); }
-const world=new THREE.Group(); scene.add(world);
+const world=new THREE.Group(); const stage=new THREE.Group(); scene.add(stage); stage.add(world);
 scene.add(new THREE.AmbientLight(0x8890c0,0.75));
 const dl=new THREE.DirectionalLight(0xffffff,0.8); dl.position.set(4,8,6); scene.add(dl);
 const COL={aurora:0x3DDCC8, star:0x8B7CF6, warn:0xFFB547, crit:0xFF5A6E, ent:0xE04CC0, line:0x2E3A6A, ink:0xE8ECF8};
@@ -790,7 +797,7 @@ function frame(now){
   const vh=2*camDist*Math.tan(22.5*Math.PI/180);
   const shift=(!sheet.hidden && !wide)?(sheet.classList.contains("min")?-0.05:-0.155)*vh:0;
   const xshift=(!sheet.hidden && wide)?400/innerWidth*vh*camera.aspect/2:0;
-  camera.position.set(xshift,shift,camDist); camera.lookAt(xshift,shift,0);
+  if(!AR.on){ camera.position.set(xshift,shift,camDist); camera.lookAt(xshift,shift,0); }
   for(let i=anims.length-1;i>=0;i--) if(anims[i](now)) anims.splice(i,1);
   const pulse=0.75+0.25*Math.sin(now/260);
   for(const r of Object.values(rings)) if(r.material.opacity>0) r.material.opacity=0.55+0.4*pulse;
@@ -799,12 +806,11 @@ function frame(now){
   renderer.render(scene,camera);
   const w=innerWidth,h=innerHeight;
   for(const l of labels){
-    tmp.copy(l.getPos()); world.localToWorld(tmp); tmp.project(camera);
+    tmp.copy(l.getPos()); world.localToWorld(tmp); tmp.project(viewCam());
     const vis=tmp.z<1 && S.phase!=="intro";
     l.el.style.display=vis?"block":"none";
     if(vis){ l.el.style.left=((tmp.x+1)/2*w)+"px"; l.el.style.top=((1-tmp.y)/2*h)+"px"; }
   }
-  requestAnimationFrame(frame);
 }
 
 /* =========================================================
@@ -812,9 +818,9 @@ function frame(now){
    ========================================================= */
 const intent={
   rotate(dx,dy){ world.rotation.y+=dx*0.008; world.rotation.x=Math.max(-0.6,Math.min(1.1,world.rotation.x+dy*0.006)); S.rotated=(S.rotated||0)+Math.abs(dx*0.008)+Math.abs(dy*0.006); if(S.rotated>1 && !S.flags?.rot){ if(S.flags) S.flags.rot=true; checkObjectives(); } },
-  zoom(f){ camDist=Math.max(7,Math.min(40,camDist*f)); },
+  zoom(f){ if(AR.on){ AR.zoom(f); return; } camDist=Math.max(7,Math.min(40,camDist*f)); },
   nodeAt(cx,cy){
-    const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(cx/innerWidth*2-1,-(cy/innerHeight)*2+1),camera);
+    const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(cx/innerWidth*2-1,-(cy/innerHeight)*2+1),viewCam());
     const hits=ray.intersectObjects(Object.values(meshes)); return hits.length?hits[0].object.userData.id:null;
   },
   select(cx,cy){
@@ -871,10 +877,10 @@ async function toggleHolo(){
     holo.hands=new Hands({locateFile:f=>MP+f});
     holo.hands.setOptions({maxNumHands:1, modelComplexity:0, minDetectionConfidence:0.6, minTrackingConfidence:0.5});
     holo.hands.onResults(onHands);
-    nova("Ologramma attivo. Avvicina pollice e indice per afferrare la stazione e ruotarla; un pinch breve su un nodo lo seleziona. Il touch resta attivo.");
+    nova("Metti la mano davanti alla fotocamera. Pinch con pollice e indice: afferri.");
     const loop=async()=>{ if(!holo.on) return; if(v.readyState>=2){ try{ await holo.hands.send({image:v}); }catch(e){} } requestAnimationFrame(loop); };
     loop();
-  }catch(e){ toast("Riconoscimento della mano non caricato. L'ologramma resta attivo con il touch.","warn"); }
+  }catch(e){ toast("Mano non riconosciuta: gioca con il dito.","warn"); }
 }
 function stopHolo(){
   holo.on=false; const v=document.getElementById("cam"); v.hidden=true;
@@ -908,7 +914,7 @@ function onHands(res){
     holo.last=null;
   }
 }
-document.getElementById("holoBtn").addEventListener("click",toggleHolo);
+document.getElementById("holoBtn").addEventListener("click",()=>AR.toggle());
 
 /* =========================================================
    6. INTERFACCIA COMUNE
@@ -1502,7 +1508,6 @@ function screenScore(){
 }
 
 buildScene();
-requestAnimationFrame(frame);
 screenOpening();
 
 
@@ -1712,7 +1717,7 @@ function burst(pos,color){
 }
 function pickPacket(cx,cy){
   if(W.captured) return true;
-  const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(cx/innerWidth*2-1,-(cy/innerHeight)*2+1),camera);
+  const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(cx/innerWidth*2-1,-(cy/innerHeight)*2+1),viewCam());
   const hits=ray.intersectObjects(W.packets.filter(p=>p.state==="fly"&&!p.passed).map(p=>p.hit));
   if(!hits.length) return false;
   capture(hits[0].object.userData.pkt); return true;
@@ -1823,11 +1828,14 @@ function screenOpening(){
   show();
   function choose(){
     o.classList.remove("glitch"); o.onclick=null;
+    const mobile = matchMedia("(pointer:coarse)").matches && !!navigator.mediaDevices;
     o.innerHTML=`<div class="title-card">STAZIONE<br>AURORA</div><div class="say nova start">
-      <button class="btn primary big" id="playBtn" type="button">Inizia</button>
+      ${mobile?`<button class="btn primary big" id="arBtn" type="button">Gioca nella tua stanza</button>`:""}
+      <button class="btn ${mobile?"":"primary "}big" id="playBtn" type="button">${mobile?"Gioca sullo schermo":"Inizia"}</button>
       <button class="btn ghost" id="expertBtn" type="button">Sono esperto di reti</button></div>`;
     const go=mode=>{ S.mode=mode; S.name=S.name||"Collaudatore"; o.classList.remove("cine"); if(registro.m2) screenIntro(); else { M=MISSIONS.m2; startMission(); } };
     $("playBtn").onclick=()=>go("cadetto"); $("expertBtn").onclick=()=>go("specialista");
+    if($("arBtn")) $("arBtn").onclick=()=>{ o.hidden=true; o.classList.remove("cine"); AR.start(()=>go("cadetto")); };
   }
 }
 
@@ -1911,6 +1919,129 @@ function scoreCadet(){
   $("again").onclick=startMission;
   if($("nextM")) $("nextM").onclick=()=>{ M=MISSIONS.m3; startMission(); };
 }
+
+/* =========================================================
+   9. REALTÀ AUMENTATA: la stazione nella stanza
+   - Android (WebXR): la stazione si appoggia su tavolo o pavimento e resta lì
+   - iPhone e altri: fotocamera posteriore + giroscopio, la stazione resta ferma nello spazio
+   ========================================================= */
+const AR = (function(){
+  const st={on:false, mode:null, session:null, hitSource:null, placed:false, onPlaced:null, q:null, first:true, xrOk:null};
+  const reticle=new THREE.Mesh(new THREE.RingGeometry(0.06,0.08,32).rotateX(-Math.PI/2), new THREE.MeshBasicMaterial({color:COL.aurora}));
+  reticle.matrixAutoUpdate=false; reticle.visible=false; scene.add(reticle);
+  const hint=document.getElementById("arHint"), btn=document.getElementById("holoBtn");
+  const showHint=t=>{ hint.textContent=t; hint.hidden=!t; };
+  const SCALE=0.045;
+
+  async function xrSupported(){
+    if(st.xrOk!==null) return st.xrOk;
+    try{ st.xrOk = !!(navigator.xr && await navigator.xr.isSessionSupported("immersive-ar")); }catch(e){ st.xrOk=false; }
+    return st.xrOk;
+  }
+  function label(){ btn.textContent = st.on ? "Esci dalla stanza" : "Nella stanza"; btn.classList.toggle("on",st.on); }
+
+  /* ---- WebXR ---- */
+  async function startXR(){
+    const s=await navigator.xr.requestSession("immersive-ar",{requiredFeatures:["hit-test"], optionalFeatures:["dom-overlay"], domOverlay:{root:document.getElementById("app")}});
+    renderer.xr.setReferenceSpaceType("local");
+    await renderer.xr.setSession(s);
+    const viewer=await s.requestReferenceSpace("viewer");
+    st.hitSource=await s.requestHitTestSource({space:viewer});
+    st.session=s; st.mode="xr"; st.on=true; st.placed=false;
+    stage.visible=false; stage.scale.setScalar(SCALE); stars.visible=false;
+    document.body.classList.add("in-ar","in-xr");
+    showHint("Inquadra un tavolo o il pavimento, poi tocca per appoggiare la stazione");
+    s.addEventListener("select",place);
+    s.addEventListener("end",()=>{ cleanup(); });
+    label();
+  }
+  function place(){
+    if(st.placed || !reticle.visible) return;
+    stage.position.setFromMatrixPosition(reticle.matrix);
+    stage.position.y += 2.75*SCALE;
+    const cam=renderer.xr.getCamera(camera); const cp=new THREE.Vector3().setFromMatrixPosition(cam.matrixWorld);
+    stage.rotation.set(0, Math.atan2(cp.x-stage.position.x, cp.z-stage.position.z), 0);
+    stage.visible=true; reticle.visible=false; st.placed=true; showHint("");
+    if(navigator.vibrate) navigator.vibrate(30);
+    const f=st.onPlaced; st.onPlaced=null; if(f) f();
+  }
+  document.addEventListener("beforexrselect",e=>{ if(e.target.closest && e.target.closest("button,input,select,#sheet,#hud,#capture,#confirm,#nova,.screen")) e.preventDefault(); });
+
+  /* ---- giroscopio + fotocamera posteriore ---- */
+  const euler=new THREE.Euler(), q0=new THREE.Quaternion(), q1=new THREE.Quaternion(-Math.sqrt(0.5),0,0,Math.sqrt(0.5)), zee=new THREE.Vector3(0,0,1);
+  let ori=null;
+  function onOri(e){ if(e.alpha==null) return; ori=e; }
+  async function startGyro(){
+    if(typeof DeviceOrientationEvent!=="undefined" && DeviceOrientationEvent.requestPermission){
+      try{ const r=await DeviceOrientationEvent.requestPermission(); if(r!=="granted") throw 0; }
+      catch(e){ toast("Senza il permesso dei sensori di movimento la stazione non resta ferma nella stanza.","warn"); }
+    }
+    addEventListener("deviceorientation",onOri);
+    if(!holo.on) await toggleHolo();
+    if(!holo.on){ removeEventListener("deviceorientation",onOri); return; }
+    st.mode="gyro"; st.on=true; st.first=true; stage.scale.setScalar(1);
+    document.body.classList.add("in-ar");
+    showHint("Muovi il telefono: la stazione resta ferma davanti a te");
+    setTimeout(()=>{ if(st.mode==="gyro") showHint(""); },4000);
+    label();
+    const f=st.onPlaced; st.onPlaced=null; if(f) f();
+  }
+  function gyroTick(){
+    camera.position.set(0,0,0);
+    if(!ori){ // nessun sensore (computer): stazione davanti
+      camera.quaternion.set(0,0,0,1); stage.position.set(0,0,-camDist); stage.rotation.set(0,0,0); return;
+    }
+    const orient=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*Math.PI/180;
+    euler.set(ori.beta*Math.PI/180, ori.alpha*Math.PI/180, -ori.gamma*Math.PI/180, "YXZ");
+    camera.quaternion.setFromEuler(euler); camera.quaternion.multiply(q1); camera.quaternion.multiply(q0.setFromAxisAngle(zee,-orient));
+    if(st.first){
+      st.first=false;
+      const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); fwd.y=0;
+      if(fwd.lengthSq()<1e-4) fwd.set(0,0,-1); fwd.normalize();
+      stage.position.copy(fwd.multiplyScalar(camDist));
+      stage.rotation.set(0, Math.atan2(-stage.position.x, -stage.position.z), 0);
+    }
+  }
+
+  function cleanup(){
+    removeEventListener("deviceorientation",onOri); ori=null;
+    if(st.mode==="gyro" && holo.on) stopHolo();
+    st.on=false; st.mode=null; st.session=null; st.hitSource=null; st.placed=false; reticle.visible=false;
+    stage.position.set(0,0,0); stage.rotation.set(0,0,0); stage.scale.setScalar(1); stage.visible=true; stars.visible=true;
+    document.body.classList.remove("in-ar","in-xr"); showHint(""); label();
+    const f=st.onPlaced; st.onPlaced=null; if(f) f();
+  }
+  async function start(then){
+    st.onPlaced=then||null;
+    if(await xrSupported()){
+      try{ await startXR(); return; }catch(e){ console.warn("WebXR non avviato", e); }
+    }
+    await startGyro();
+    if(!st.on){ const f=st.onPlaced; st.onPlaced=null; if(f) f(); }
+  }
+  function stop(){ if(st.session){ st.session.end(); return; } cleanup(); }
+
+  return {
+    get on(){ return st.on; }, get mode(){ return st.mode; },
+    xrSupported, start, stop, toggle(){ st.on?stop():start(); },
+    tick(xrFrame){
+      if(st.mode==="gyro"){ gyroTick(); return; }
+      if(st.mode==="xr" && xrFrame && st.hitSource && !st.placed){
+        const res=xrFrame.getHitTestResults(st.hitSource);
+        if(res.length){ const pose=res[0].getPose(renderer.xr.getReferenceSpace()); if(pose){ reticle.visible=true; reticle.matrix.fromArray(pose.transform.matrix); } }
+        else reticle.visible=false;
+      }
+    },
+    zoom(f){ const b=st.mode==="xr"?SCALE:1; stage.scale.setScalar(Math.max(b*0.4, Math.min(b*3, stage.scale.x/f))); }
+  };
+})();
+function viewCam(){
+  if(!renderer.xr.isPresenting) return camera;
+  const c=renderer.xr.getCamera(camera).cameras[0]||camera;
+  c.projectionMatrixInverse.copy(c.projectionMatrix).invert();
+  return c;
+}
+renderer.setAnimationLoop((t,xrFrame)=>{ if(AR.on) AR.tick(xrFrame); frame(performance.now()); });
 </script>
 
 </body></html>
